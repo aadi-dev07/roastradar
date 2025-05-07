@@ -1,9 +1,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Calendar, Search, ArrowRight } from "lucide-react";
+import { Calendar, Search, ArrowRight, Settings } from "lucide-react";
 import Layout from "@/components/Layout";
 import LoadingScreen from "@/components/LoadingScreen";
+import ApiCredentialsForm from "@/components/ApiCredentialsForm";
+import { analyzeCompetitor } from "@/services/analysisService";
+import { toast } from "@/components/ui/sonner";
 
 const ScanPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,32 +17,98 @@ const ScanPage: React.FC = () => {
   const [subreddit, setSubreddit] = useState("");
   const [timeRange, setTimeRange] = useState("3");
   const [isLoading, setIsLoading] = useState(false);
+  const [showCredentialsForm, setShowCredentialsForm] = useState(false);
+  const [credentialsComplete, setCredentialsComplete] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (competitorName.trim()) {
-      setIsLoading(true);
-      
-      // Simulate API call delay
-      setTimeout(() => {
-        setIsLoading(false);
-        navigate(`/insights?name=${encodeURIComponent(competitorName.trim())}`);
-      }, 3000);
+  useEffect(() => {
+    // Check if we have all credentials
+    const redditClientId = localStorage.getItem("redditClientId");
+    const redditClientSecret = localStorage.getItem("redditClientSecret");
+    const openRouterApiKey = localStorage.getItem("openRouterApiKey");
+    
+    setCredentialsComplete(
+      !!redditClientId && !!redditClientSecret && !!openRouterApiKey
+    );
+    
+    // If no credentials, show the form
+    if (!redditClientId || !redditClientSecret || !openRouterApiKey) {
+      setShowCredentialsForm(true);
     }
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!competitorName.trim()) {
+      toast.error("Please enter a competitor name");
+      return;
+    }
+    
+    // Check if we have the required credentials
+    if (!credentialsComplete) {
+      setShowCredentialsForm(true);
+      toast.error("API credentials required", {
+        description: "Please add your API credentials before scanning."
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Call our analysis service
+      const result = await analyzeCompetitor(
+        competitorName.trim(),
+        subreddit.trim(),
+        timeRange
+      );
+      
+      // Store result in sessionStorage for the insights page to use
+      sessionStorage.setItem("analysisResult", JSON.stringify(result));
+      
+      // Navigate to insights page
+      navigate(`/insights?name=${encodeURIComponent(competitorName.trim())}`);
+    } catch (error: any) {
+      console.error("Analysis error:", error);
+      toast.error("Analysis failed", {
+        description: error.message || "Could not complete the analysis"
+      });
+      setIsLoading(false);
+    }
+  };
+
+  const toggleCredentialsForm = () => {
+    setShowCredentialsForm(!showCredentialsForm);
   };
 
   return (
     <Layout>
-      {isLoading && <LoadingScreen />}
+      {isLoading && <LoadingScreen text={`Analyzing ${competitorName} pain points...`} />}
       
       <section className="py-16">
         <div className="container max-w-3xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <h1 className="text-4xl font-bold mb-4">Scan Competitor Pain Points</h1>
             <p className="text-lg text-foreground/70">
               Enter your competitor's name and we'll analyze Reddit to find their users' biggest complaints.
             </p>
           </div>
+          
+          <div className="mb-6 flex justify-end">
+            <button
+              onClick={toggleCredentialsForm}
+              className="flex items-center gap-2 text-sm text-foreground/70 hover:text-primary transition-colors"
+            >
+              <Settings size={16} />
+              {credentialsComplete ? "Update API Keys" : "Add API Keys"}
+            </button>
+          </div>
+          
+          {showCredentialsForm && (
+            <div className="mb-8">
+              <ApiCredentialsForm />
+            </div>
+          )}
           
           <div className="bg-card border rounded-lg p-6 md:p-8 shadow-sm">
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -101,9 +170,16 @@ const ScanPage: React.FC = () => {
               <button 
                 type="submit" 
                 className="w-full bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                disabled={!credentialsComplete}
               >
                 Start Scanning <ArrowRight size={18} />
               </button>
+              
+              {!credentialsComplete && (
+                <p className="text-sm text-destructive text-center">
+                  Please add your API credentials before scanning
+                </p>
+              )}
             </form>
           </div>
         </div>
