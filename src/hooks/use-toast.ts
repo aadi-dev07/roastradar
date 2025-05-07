@@ -168,6 +168,22 @@ function toast({ ...props }: Toast) {
   }
 }
 
+// Add variant methods for toast
+toast.success = (title: string, props?: Toast) => 
+  toast({ 
+    ...props, 
+    title, 
+    variant: "default", 
+    className: "bg-green-500 text-white border-green-600" 
+  });
+
+toast.error = (title: string, props?: Toast) => 
+  toast({ 
+    ...props, 
+    title, 
+    variant: "destructive" 
+  });
+
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
