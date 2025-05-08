@@ -3,13 +3,14 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/hooks/use-toast";
 import { KeyRound, Save } from "lucide-react";
 
 const ApiCredentialsForm: React.FC = () => {
   const [redditClientId, setRedditClientId] = useState("");
   const [redditClientSecret, setRedditClientSecret] = useState("");
   const [openRouterApiKey, setOpenRouterApiKey] = useState("");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
@@ -17,16 +18,18 @@ const ApiCredentialsForm: React.FC = () => {
     const storedRedditClientId = localStorage.getItem("redditClientId") || "";
     const storedRedditClientSecret = localStorage.getItem("redditClientSecret") || "";
     const storedOpenRouterApiKey = localStorage.getItem("openRouterApiKey") || "";
+    const storedGeminiApiKey = localStorage.getItem("geminiApiKey") || "";
     
     setRedditClientId(storedRedditClientId);
     setRedditClientSecret(storedRedditClientSecret);
     setOpenRouterApiKey(storedOpenRouterApiKey);
+    setGeminiApiKey(storedGeminiApiKey);
     
     // Check if we have all credentials
     setIsComplete(
       !!storedRedditClientId && 
       !!storedRedditClientSecret && 
-      !!storedOpenRouterApiKey
+      (!!storedOpenRouterApiKey || !!storedGeminiApiKey)
     );
   }, []);
 
@@ -35,8 +38,13 @@ const ApiCredentialsForm: React.FC = () => {
     localStorage.setItem("redditClientId", redditClientId);
     localStorage.setItem("redditClientSecret", redditClientSecret);
     localStorage.setItem("openRouterApiKey", openRouterApiKey);
+    localStorage.setItem("geminiApiKey", geminiApiKey);
     
-    setIsComplete(!!redditClientId && !!redditClientSecret && !!openRouterApiKey);
+    setIsComplete(
+      !!redditClientId && 
+      !!redditClientSecret && 
+      (!!openRouterApiKey || !!geminiApiKey)
+    );
     
     toast.success("API credentials saved", {
       description: "Your credentials have been saved securely in local storage."
@@ -74,12 +82,23 @@ const ApiCredentialsForm: React.FC = () => {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="openRouterApiKey">OpenRouter API Key</Label>
+          <Label htmlFor="openRouterApiKey">OpenRouter API Key (Optional if using Gemini)</Label>
           <Input
             id="openRouterApiKey"
             value={openRouterApiKey}
             onChange={(e) => setOpenRouterApiKey(e.target.value)}
             placeholder="Enter your OpenRouter API Key"
+            type="password"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="geminiApiKey">Google Gemini API Key (Optional if using OpenRouter)</Label>
+          <Input
+            id="geminiApiKey"
+            value={geminiApiKey}
+            onChange={(e) => setGeminiApiKey(e.target.value)}
+            placeholder="Enter your Google Gemini API Key"
             type="password"
           />
         </div>

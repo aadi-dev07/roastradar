@@ -1,21 +1,15 @@
 
-import { RawRedditData } from "@/types/analysis";
-import { AnalysisResult, AIModel } from "@/types/analysis";
+import { RawRedditData, AnalysisResult } from "@/types/analysis";
 
-// OpenRouter API call to analyze Reddit content
-export const analyzeRedditContent = async (
-  data: RawRedditData, 
-  model: AIModel = { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'openai', maxTokens: 1500, description: '' }
-): Promise<AnalysisResult> => {
+export const analyzeWithGemini = async (data: RawRedditData): Promise<AnalysisResult> => {
   try {
-    const apiKey = localStorage.getItem('openRouterApiKey') || '';
+    const apiKey = localStorage.getItem('geminiApiKey') || '';
     if (!apiKey) {
-      throw new Error('OpenRouter API key not found');
+      throw new Error('Gemini API key not found');
     }
 
-    // Prepare the posts for analysis - adjust based on model
-    const postLimit = model.id.includes('gpt-3.5') ? 10 : 20;
-    const limitedPosts = data.posts.slice(0, postLimit);
+    // Prepare the posts for analysis - with Gemini we can send more posts
+    const limitedPosts = data.posts.slice(0, 30);
     
     const postsForAnalysis = limitedPosts.map(post => ({
       title: post.title,
@@ -24,7 +18,7 @@ export const analyzeRedditContent = async (
       subreddit: post.subreddit
     }));
 
-    // Create prompt for the AI
+    // Create prompt for the AI - same as OpenRouter for consistency
     const prompt = `
     You are an expert at analyzing customer feedback and identifying product pain points.
     
@@ -59,38 +53,43 @@ export const analyzeRedditContent = async (
     ${JSON.stringify(postsForAnalysis)}
     `;
 
-    // Make the API call to OpenRouter
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    // Make the API call to Google Gemini
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': window.location.origin,
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
-        model: model.id,
-        messages: [
-          { 
-            role: 'user',
-            content: prompt
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
           }
         ],
-        temperature: 0.2,
-        max_tokens: model.maxTokens,
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 2000,
+          topP: 0.95,
+          topK: 40
+        }
       }),
     });
 
     const result = await response.json();
     
     if (result.error) {
-      throw new Error(result.error.message || 'Error from OpenRouter API');
+      throw new Error(result.error.message || 'Error from Gemini API');
     }
 
     // Extract the JSON from the model's response
-    const content = result.choices?.[0]?.message?.content || '';
-    
-    // Parse the JSON response
     try {
+      // The response structure is different from OpenRouter
+      const content = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
       // Extract JSON from the response (handling potential markdown code blocks)
       let jsonString = content;
       if (content.includes('```json')) {
@@ -102,11 +101,11 @@ export const analyzeRedditContent = async (
       const analysisResult = JSON.parse(jsonString);
       return analysisResult;
     } catch (e) {
-      console.error('Error parsing OpenRouter response:', e);
-      throw new Error('Failed to parse analysis result');
+      console.error('Error parsing Gemini response:', e);
+      throw new Error('Failed to parse analysis result from Gemini');
     }
   } catch (error) {
-    console.error('Error analyzing content with OpenRouter:', error);
+    console.error('Error analyzing content with Gemini:', error);
     throw error;
   }
 };
