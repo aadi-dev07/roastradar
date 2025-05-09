@@ -48,23 +48,6 @@ const SignIn: React.FC = () => {
     }
   };
 
-  const handleForgotPassword = () => {
-    if (isLoaded && signIn) {
-      signIn.create({ 
-        identifier: email || '' 
-      }).then(() => {
-        navigate('/reset-password');
-        toast.success("Password reset email sent", {
-          description: "Check your inbox for further instructions"
-        });
-      }).catch((err) => {
-        toast.error("Failed to initiate password reset", {
-          description: err.errors?.[0]?.message || "Please try again"
-        });
-      });
-    }
-  };
-
   return (
     <div className="max-w-md w-full mx-auto">
       <div className="text-center mb-8">
@@ -92,7 +75,11 @@ const SignIn: React.FC = () => {
               <Label htmlFor="password">Password</Label>
               <button 
                 type="button" 
-                onClick={handleForgotPassword}
+                onClick={() => signIn?.authenticateWithRedirect({
+                  strategy: "forgot_password",
+                  redirectUrl: "/reset",
+                  redirectUrlComplete: "/signin"
+                })}
                 className="text-sm text-primary hover:underline"
               >
                 Forgot password?
