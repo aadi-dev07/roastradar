@@ -12,7 +12,7 @@ export const analyzeCompetitor = async (
   competitor: string,
   subreddit: string = "",
   timeRange: string = "3",
-  modelId: string = "google/gemini-pro"
+  modelId: string = "google/gemini-1.0-pro"
 ): Promise<AnalysisResult> => {
   try {
     // Step 1: Search Reddit for posts about the competitor
@@ -43,6 +43,9 @@ export const analyzeCompetitor = async (
       throw new Error(`Invalid model selected: ${modelId}`);
     }
     
+    // Store selected model for potential use in service files
+    localStorage.setItem('selectedModel', modelId);
+    
     let analysisResult: AnalysisResult;
 
     // Route to appropriate service based on provider
@@ -50,6 +53,7 @@ export const analyzeCompetitor = async (
       case 'google':
         analysisResult = await analyzeWithGemini(rawData);
         break;
+      case 'deepseek':
       case 'openai':
       default:
         analysisResult = await analyzeRedditContent(rawData, selectedModel);

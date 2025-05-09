@@ -14,7 +14,9 @@ export const analyzeRedditContent = async (
     }
 
     // Prepare the posts for analysis - adjust based on model
-    const postLimit = model.id.includes('gpt-3.5') ? 10 : 20;
+    const postLimit = model.provider === 'deepseek' ? 15 : 
+                       model.id.includes('gpt-3.5') ? 10 : 20;
+                       
     const limitedPosts = data.posts.slice(0, postLimit);
     
     const postsForAnalysis = limitedPosts.map(post => ({

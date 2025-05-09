@@ -8,11 +8,13 @@ import ApiCredentialsForm from "@/components/ApiCredentialsForm";
 import { analyzeCompetitor } from "@/services/analysisService";
 import { toast } from "@/hooks/use-toast";
 import { AIModel, AI_MODELS } from "@/types/analysis";
-import { getAvailableModels, getDefaultModel } from "@/services/modelService";
+import { getAvailableModels, getDefaultModel, getModelsByProvider } from "@/services/modelService";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -30,10 +32,12 @@ const ScanPage: React.FC = () => {
   const [credentialsComplete, setCredentialsComplete] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState("");
   const [models, setModels] = useState<AIModel[]>([]);
+  const [modelsByProvider, setModelsByProvider] = useState<Record<string, AIModel[]>>({});
 
   useEffect(() => {
     // Load available models
     setModels(getAvailableModels());
+    setModelsByProvider(getModelsByProvider());
     setSelectedModelId(getDefaultModel().id);
     
     // Check if we have all credentials
@@ -58,7 +62,7 @@ const ScanPage: React.FC = () => {
     const redditClientId = localStorage.getItem("redditClientId");
     const redditClientSecret = localStorage.getItem("redditClientSecret");
     
-    // Check if selected model is from OpenAI or Google and verify corresponding API key
+    // Check if selected model is from OpenAI/DeepSeek or Google and verify corresponding API key
     const selectedModel = models.find(model => model.id === selectedModelId);
     if (selectedModel) {
       const openRouterApiKey = localStorage.getItem("openRouterApiKey");
@@ -71,7 +75,7 @@ const ScanPage: React.FC = () => {
         return false;
       }
       
-      if (selectedModel.provider === 'openai' && !openRouterApiKey) {
+      if ((selectedModel.provider === 'openai' || selectedModel.provider === 'deepseek') && !openRouterApiKey) {
         toast.error("Missing API key", {
           description: "OpenRouter API key is required for this model"
         });
@@ -130,6 +134,15 @@ const ScanPage: React.FC = () => {
   };
 
   const selectedModel = models.find(model => model.id === selectedModelId);
+
+  const getProviderDisplayName = (provider: string) => {
+    switch (provider) {
+      case 'openai': return 'OpenAI Models';
+      case 'google': return 'Google Gemini Models';
+      case 'deepseek': return 'Free Models';
+      default: return `${provider.charAt(0).toUpperCase()}${provider.slice(1)} Models`;
+    }
+  };
 
   return (
     <Layout>
@@ -231,13 +244,23 @@ const ScanPage: React.FC = () => {
                         <SelectValue placeholder="Select model" />
                       </SelectTrigger>
                       <SelectContent>
-                        {models.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            <div className="flex flex-col">
-                              <span>{model.name}</span>
-                              <span className="text-xs text-foreground/60">{model.description}</span>
-                            </div>
-                          </SelectItem>
+                        {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
+                          <SelectGroup key={provider}>
+                            <SelectLabel>{getProviderDisplayName(provider)}</SelectLabel>
+                            {providerModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                <div className="flex flex-col">
+                                  <span className="flex items-center">
+                                    {model.name}
+                                    {model.isFree && (
+                                      <span className="ml-2 px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">Free</span>
+                                    )}
+                                  </span>
+                                  <span className="text-xs text-foreground/60">{model.description}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         ))}
                       </SelectContent>
                     </Select>

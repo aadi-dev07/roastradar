@@ -29,12 +29,14 @@ export interface RawRedditData {
 export type AIModel = {
   id: string;
   name: string;
-  provider: 'openai' | 'google' | 'anthropic';
+  provider: 'openai' | 'google' | 'anthropic' | 'deepseek';
   maxTokens: number;
   description: string;
+  isFree?: boolean;
 }
 
 export const AI_MODELS: AIModel[] = [
+  // OpenAI Models
   {
     id: 'openai/gpt-4o',
     name: 'GPT-4o',
@@ -49,11 +51,45 @@ export const AI_MODELS: AIModel[] = [
     maxTokens: 1000,
     description: 'Faster and more affordable'
   },
+  
+  // Google Gemini Models
   {
-    id: 'google/gemini-pro',
-    name: 'Google Gemini Pro',
+    id: 'google/gemini-1.0-pro',
+    name: 'Gemini 1.0 Pro',
     provider: 'google',
     maxTokens: 2000,
-    description: 'Google\'s advanced LLM'
+    description: 'Google\'s standard LLM'
+  },
+  {
+    id: 'google/gemini-1.5-pro',
+    name: 'Gemini 1.5 Pro',
+    provider: 'google',
+    maxTokens: 2500,
+    description: 'Google\'s advanced LLM with enhanced capabilities'
+  },
+  {
+    id: 'google/gemini-1.5-flash',
+    name: 'Gemini 1.5 Flash',
+    provider: 'google',
+    maxTokens: 1800,
+    description: 'Faster and more efficient Google LLM'
+  },
+  
+  // Free OpenRouter Models
+  {
+    id: 'deepseek/deepseek-chat-v3-0324',
+    name: 'DeepSeek Chat',
+    provider: 'deepseek',
+    maxTokens: 1200,
+    description: 'Free alternative with good performance',
+    isFree: true
+  },
+  {
+    id: 'deepseek/deepseek-r1',
+    name: 'DeepSeek R1',
+    provider: 'deepseek',
+    maxTokens: 1000,
+    description: 'Fast free general purpose model',
+    isFree: true
   }
 ];
