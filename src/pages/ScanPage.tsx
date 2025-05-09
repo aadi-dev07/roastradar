@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useUser } from "@clerk/clerk-react";
 import { Calendar, Search, ArrowRight, Settings, Cpu } from "lucide-react";
 import Layout from "@/components/Layout";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -23,6 +24,7 @@ const ScanPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialCompetitor = searchParams.get("name") || "";
+  const { user, isSignedIn } = useUser();
   
   const [competitorName, setCompetitorName] = useState(initialCompetitor);
   const [subreddit, setSubreddit] = useState("");
@@ -40,34 +42,67 @@ const ScanPage: React.FC = () => {
     setModelsByProvider(getModelsByProvider());
     setSelectedModelId(getDefaultModel().id);
     
-    // Check if we have all credentials
-    const redditClientId = localStorage.getItem("redditClientId");
-    const redditClientSecret = localStorage.getItem("redditClientSecret");
-    const openRouterApiKey = localStorage.getItem("openRouterApiKey");
-    const geminiApiKey = localStorage.getItem("geminiApiKey");
+    // Check if we have all credentials - first check user metadata, then localStorage
+    const checkCredentials = async () => {
+      let redditClientId = "";
+      let redditClientSecret = "";
+      let openRouterApiKey = "";
+      let geminiApiKey = "";
+      
+      if (isSignedIn && user) {
+        // Get from user metadata
+        const metadata = user.unsafeMetadata as Record<string, string>;
+        redditClientId = metadata?.redditClientId || "";
+        redditClientSecret = metadata?.redditClientSecret || "";
+        openRouterApiKey = metadata?.openRouterApiKey || "";
+        geminiApiKey = metadata?.geminiApiKey || "";
+      }
+      
+      // If not found in user metadata, check localStorage
+      if (!redditClientId) redditClientId = localStorage.getItem("redditClientId") || "";
+      if (!redditClientSecret) redditClientSecret = localStorage.getItem("redditClientSecret") || "";
+      if (!openRouterApiKey) openRouterApiKey = localStorage.getItem("openRouterApiKey") || "";
+      if (!geminiApiKey) geminiApiKey = localStorage.getItem("geminiApiKey") || "";
+      
+      const complete = (!!redditClientId && !!redditClientSecret) && 
+        (!!openRouterApiKey || !!geminiApiKey);
+      
+      setCredentialsComplete(complete);
+      
+      // If no credentials, show the form
+      if (!complete) {
+        setShowCredentialsForm(true);
+      }
+    };
     
-    setCredentialsComplete(
-      !!redditClientId && 
-      !!redditClientSecret && 
-      (!!openRouterApiKey || !!geminiApiKey)
-    );
-    
-    // If no credentials, show the form
-    if (!redditClientId || !redditClientSecret || (!openRouterApiKey && !geminiApiKey)) {
-      setShowCredentialsForm(true);
-    }
-  }, []);
+    checkCredentials();
+  }, [isSignedIn, user]);
 
   const checkApiCredentials = () => {
-    const redditClientId = localStorage.getItem("redditClientId");
-    const redditClientSecret = localStorage.getItem("redditClientSecret");
+    // First check user metadata, then localStorage
+    let redditClientId = "";
+    let redditClientSecret = "";
+    let openRouterApiKey = "";
+    let geminiApiKey = "";
+    
+    if (isSignedIn && user) {
+      // Get from user metadata
+      const metadata = user.unsafeMetadata as Record<string, string>;
+      redditClientId = metadata?.redditClientId || "";
+      redditClientSecret = metadata?.redditClientSecret || "";
+      openRouterApiKey = metadata?.openRouterApiKey || "";
+      geminiApiKey = metadata?.geminiApiKey || "";
+    }
+    
+    // If not found in user metadata, check localStorage
+    if (!redditClientId) redditClientId = localStorage.getItem("redditClientId") || "";
+    if (!redditClientSecret) redditClientSecret = localStorage.getItem("redditClientSecret") || "";
+    if (!openRouterApiKey) openRouterApiKey = localStorage.getItem("openRouterApiKey") || "";
+    if (!geminiApiKey) geminiApiKey = localStorage.getItem("geminiApiKey") || "";
     
     // Check if selected model is from OpenAI/DeepSeek or Google and verify corresponding API key
     const selectedModel = models.find(model => model.id === selectedModelId);
     if (selectedModel) {
-      const openRouterApiKey = localStorage.getItem("openRouterApiKey");
-      const geminiApiKey = localStorage.getItem("geminiApiKey");
-      
       if (selectedModel.provider === 'google' && !geminiApiKey) {
         toast.error("Missing API key", {
           description: "Google Gemini API key is required for this model"
@@ -117,6 +152,34 @@ const ScanPage: React.FC = () => {
       // Store result in sessionStorage for the insights page to use
       sessionStorage.setItem("analysisResult", JSON.stringify(result));
       sessionStorage.setItem("analysisModel", selectedModelId);
+      
+      // If user is signed in, save this scan to their history
+      if (isSignedIn && user) {
+        try {
+          // Get existing scan history
+          const metadata = user.unsafeMetadata as Record<string, any>;
+          const scanHistory = metadata?.scanHistory || [];
+          
+          // Add new scan to history
+          const newScan = {
+            id: Date.now().toString(),
+            competitorName: competitorName.trim(),
+            date: new Date().toISOString(),
+            modelId: selectedModelId,
+            subreddit: subreddit.trim() || "all"
+          };
+          
+          // Update user metadata with new scan history
+          await user.update({
+            unsafeMetadata: {
+              ...metadata,
+              scanHistory: [newScan, ...scanHistory.slice(0, 9)]  // Keep last 10 scans
+            }
+          });
+        } catch (error) {
+          console.error("Error saving scan history:", error);
+        }
+      }
       
       // Navigate to insights page
       navigate(`/insights?name=${encodeURIComponent(competitorName.trim())}`);
@@ -279,6 +342,12 @@ const ScanPage: React.FC = () => {
               {!credentialsComplete && (
                 <p className="text-sm text-destructive text-center">
                   Please add your API credentials before scanning
+                </p>
+              )}
+
+              {!isSignedIn && credentialsComplete && (
+                <p className="text-sm text-muted-foreground text-center">
+                  <a href="/sign-in" className="text-primary hover:underline">Sign in</a> to save your scan history and API credentials to your account
                 </p>
               )}
             </form>

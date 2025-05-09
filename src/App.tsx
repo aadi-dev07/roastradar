@@ -8,6 +8,10 @@ import LandingPage from "./pages/LandingPage";
 import ScanPage from "./pages/ScanPage";
 import InsightsPage from "./pages/InsightsPage";
 import NotFound from "./pages/NotFound";
+import SignIn from "./components/auth/SignIn";
+import SignUp from "./components/auth/SignUp";
+import UserProfile from "./components/auth/UserProfile";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +22,13 @@ const App = () => (
       <Sonner />
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/sign-in/*" element={<SignIn />} />
+        <Route path="/sign-up/*" element={<SignUp />} />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <UserProfile />
+          </ProtectedRoute>
+        } />
         <Route path="/scan" element={<ScanPage />} />
         <Route path="/insights" element={<InsightsPage />} />
         <Route path="*" element={<NotFound />} />

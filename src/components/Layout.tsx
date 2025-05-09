@@ -1,6 +1,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
+import { useUser, useClerk, useAuth } from "@clerk/clerk-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LayoutProps {
@@ -8,6 +9,10 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
+  const { isLoaded } = useAuth();
+  
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b py-4">
@@ -21,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
             <span className="font-bold text-xl">RoastRadar</span>
           </Link>
-          <nav>
+          <nav className="flex items-center gap-6">
             <ul className="flex space-x-4">
               <li>
                 <Link to="/" className="text-foreground/80 hover:text-foreground transition-colors">
@@ -34,6 +39,50 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Link>
               </li>
             </ul>
+            
+            {isLoaded && (
+              <div className="flex items-center gap-4">
+                {isSignedIn ? (
+                  <div className="flex items-center gap-4">
+                    <div className="relative group">
+                      <button className="flex items-center gap-2 bg-card border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
+                        {user?.profileImageUrl ? (
+                          <img src={user.profileImageUrl} alt="Profile" className="w-6 h-6 rounded-full" />
+                        ) : (
+                          <div className="w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center text-xs text-primary font-medium">
+                            {(user?.firstName?.[0] || "") + (user?.lastName?.[0] || "")}
+                          </div>
+                        )}
+                        <span className="text-sm">{user?.firstName || "User"}</span>
+                      </button>
+                      
+                      <div className="absolute right-0 mt-2 w-48 bg-card rounded-md shadow-lg border overflow-hidden invisible group-hover:visible z-50">
+                        <div className="py-1">
+                          <Link to="/profile" className="block px-4 py-2 text-sm hover:bg-muted transition-colors">
+                            Profile
+                          </Link>
+                          <button 
+                            onClick={() => signOut()}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors text-destructive"
+                          >
+                            Sign out
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Link to="/sign-in" className="text-sm font-medium hover:underline">
+                      Sign in
+                    </Link>
+                    <Link to="/sign-up" className="bg-primary text-white text-sm font-medium px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors">
+                      Sign up
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
         </div>
       </header>

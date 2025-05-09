@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from "react";
+import { useUser } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { KeyRound, Save } from "lucide-react";
 
 const ApiCredentialsForm: React.FC = () => {
+  const { user, isSignedIn } = useUser();
   const [redditClientId, setRedditClientId] = useState("");
   const [redditClientSecret, setRedditClientSecret] = useState("");
   const [openRouterApiKey, setOpenRouterApiKey] = useState("");
@@ -14,41 +16,70 @@ const ApiCredentialsForm: React.FC = () => {
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    // Load stored credentials on mount
-    const storedRedditClientId = localStorage.getItem("redditClientId") || "";
-    const storedRedditClientSecret = localStorage.getItem("redditClientSecret") || "";
-    const storedOpenRouterApiKey = localStorage.getItem("openRouterApiKey") || "";
-    const storedGeminiApiKey = localStorage.getItem("geminiApiKey") || "";
-    
-    setRedditClientId(storedRedditClientId);
-    setRedditClientSecret(storedRedditClientSecret);
-    setOpenRouterApiKey(storedOpenRouterApiKey);
-    setGeminiApiKey(storedGeminiApiKey);
+    // Load stored credentials from user metadata if signed in, otherwise from localStorage
+    if (isSignedIn && user) {
+      // Get from user metadata
+      const metadata = user.unsafeMetadata as Record<string, string>;
+      setRedditClientId(metadata?.redditClientId || "");
+      setRedditClientSecret(metadata?.redditClientSecret || "");
+      setOpenRouterApiKey(metadata?.openRouterApiKey || "");
+      setGeminiApiKey(metadata?.geminiApiKey || "");
+    } else {
+      // Fall back to localStorage
+      const storedRedditClientId = localStorage.getItem("redditClientId") || "";
+      const storedRedditClientSecret = localStorage.getItem("redditClientSecret") || "";
+      const storedOpenRouterApiKey = localStorage.getItem("openRouterApiKey") || "";
+      const storedGeminiApiKey = localStorage.getItem("geminiApiKey") || "";
+      
+      setRedditClientId(storedRedditClientId);
+      setRedditClientSecret(storedRedditClientSecret);
+      setOpenRouterApiKey(storedOpenRouterApiKey);
+      setGeminiApiKey(storedGeminiApiKey);
+    }
     
     // Check if we have all credentials
     setIsComplete(
-      !!storedRedditClientId && 
-      !!storedRedditClientSecret && 
-      (!!storedOpenRouterApiKey || !!storedGeminiApiKey)
-    );
-  }, []);
-
-  const handleSave = () => {
-    // Store the API credentials
-    localStorage.setItem("redditClientId", redditClientId);
-    localStorage.setItem("redditClientSecret", redditClientSecret);
-    localStorage.setItem("openRouterApiKey", openRouterApiKey);
-    localStorage.setItem("geminiApiKey", geminiApiKey);
-    
-    setIsComplete(
-      !!redditClientId && 
-      !!redditClientSecret && 
+      (!!redditClientId && !!redditClientSecret) && 
       (!!openRouterApiKey || !!geminiApiKey)
     );
-    
-    toast.success("API credentials saved", {
-      description: "Your credentials have been saved securely in local storage."
-    });
+  }, [isSignedIn, user]);
+
+  const handleSave = async () => {
+    try {
+      if (isSignedIn && user) {
+        // Store credentials in user metadata
+        await user.update({
+          unsafeMetadata: {
+            redditClientId,
+            redditClientSecret,
+            openRouterApiKey,
+            geminiApiKey,
+          },
+        });
+      } 
+      
+      // Always store in localStorage as fallback
+      localStorage.setItem("redditClientId", redditClientId);
+      localStorage.setItem("redditClientSecret", redditClientSecret);
+      localStorage.setItem("openRouterApiKey", openRouterApiKey);
+      localStorage.setItem("geminiApiKey", geminiApiKey);
+      
+      setIsComplete(
+        (!!redditClientId && !!redditClientSecret) && 
+        (!!openRouterApiKey || !!geminiApiKey)
+      );
+      
+      toast.success("API credentials saved", {
+        description: isSignedIn 
+          ? "Your credentials have been saved to your account." 
+          : "Your credentials have been saved securely in local storage."
+      });
+    } catch (error) {
+      console.error("Error saving credentials:", error);
+      toast.error("Failed to save credentials", {
+        description: "There was an error saving your credentials. Please try again."
+      });
+    }
   };
 
   return (
@@ -57,6 +88,12 @@ const ApiCredentialsForm: React.FC = () => {
         <KeyRound size={20} className="text-primary" />
         <h3 className="text-lg font-medium">API Credentials</h3>
       </div>
+      
+      {isSignedIn && (
+        <p className="text-sm text-muted-foreground mb-4">
+          Your API credentials will be securely stored in your account.
+        </p>
+      )}
       
       <div className="space-y-4">
         <div className="space-y-2">
