@@ -30,10 +30,10 @@ const ApiCredentialsForm: React.FC = () => {
     
     // Then try to load from user metadata if available
     if (isUserLoaded && user) {
-      const userRedditClientId = user.publicMetadata.redditClientId as string;
-      const userRedditClientSecret = user.publicMetadata.redditClientSecret as string;
-      const userOpenRouterApiKey = user.publicMetadata.openRouterApiKey as string;
-      const userGeminiApiKey = user.publicMetadata.geminiApiKey as string;
+      const userRedditClientId = user.unsafeMetadata.redditClientId as string;
+      const userRedditClientSecret = user.unsafeMetadata.redditClientSecret as string;
+      const userOpenRouterApiKey = user.unsafeMetadata.openRouterApiKey as string;
+      const userGeminiApiKey = user.unsafeMetadata.geminiApiKey as string;
       
       if (userRedditClientId) setRedditClientId(userRedditClientId);
       if (userRedditClientSecret) setRedditClientSecret(userRedditClientSecret);
@@ -62,8 +62,7 @@ const ApiCredentialsForm: React.FC = () => {
       // Also save to user metadata if user is logged in
       if (isUserLoaded && user) {
         await user.update({
-          publicMetadata: {
-            ...user.publicMetadata,
+          unsafeMetadata: {
             redditClientId,
             redditClientSecret,
             openRouterApiKey,
