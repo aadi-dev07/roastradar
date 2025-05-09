@@ -42,7 +42,7 @@ const ApiCredentialsForm: React.FC = () => {
       (!!redditClientId && !!redditClientSecret) && 
       (!!openRouterApiKey || !!geminiApiKey)
     );
-  }, [isSignedIn, user]);
+  }, [isSignedIn, user, redditClientId, redditClientSecret, openRouterApiKey, geminiApiKey]);
 
   const handleSave = async () => {
     try {

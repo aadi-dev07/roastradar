@@ -46,8 +46,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <div className="flex items-center gap-4">
                     <div className="relative group">
                       <button className="flex items-center gap-2 bg-card border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors">
-                        {user?.profileImageUrl ? (
-                          <img src={user.profileImageUrl} alt="Profile" className="w-6 h-6 rounded-full" />
+                        {user?.imageUrl ? (
+                          <img src={user.imageUrl} alt="Profile" className="w-6 h-6 rounded-full" />
                         ) : (
                           <div className="w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center text-xs text-primary font-medium">
                             {(user?.firstName?.[0] || "") + (user?.lastName?.[0] || "")}

@@ -116,9 +116,13 @@ const UserProfile = () => {
                   <Label>Password</Label>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">••••••••••••</span>
-                    <Button variant="outline" onClick={() => user.createMagicLinkFlow().startMagicLinkFlow({
-                      redirectUrl: window.location.href
-                    })}>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        // Use Clerk's reset password flow
+                        window.location.href = '/sign-in/reset-password';
+                      }}
+                    >
                       Reset Password
                     </Button>
                   </div>
