@@ -1,27 +1,25 @@
-
 import { RedditSearchParams, RedditSearchResponse } from "@/types/reddit";
+import { handleCorsError } from "./corsProxyHelper";
 
-// Basic auth for Reddit API
-const getAuthHeaders = () => {
-  const clientId = localStorage.getItem('redditClientId') || '';
-  const clientSecret = localStorage.getItem('redditClientSecret') || '';
-  
-  // Using Basic Auth for Reddit API
-  const token = btoa(`${clientId}:${clientSecret}`);
-  
-  return {
-    'Authorization': `Basic ${token}`,
-    'Content-Type': 'application/x-www-form-urlencoded',
-  };
-};
+// Proxy server URL - replace this with your deployed Cloudflare Worker URL
+const PROXY_URL = "https://your-worker-url.workers.dev";
 
-// Get access token
+// Get access token via proxy
 const getAccessToken = async (): Promise<string> => {
   try {
-    const response = await fetch('https://www.reddit.com/api/v1/access_token', {
+    const clientId = localStorage.getItem('redditClientId') || '';
+    const clientSecret = localStorage.getItem('redditClientSecret') || '';
+    
+    if (!clientId || !clientSecret) {
+      throw new Error("Missing Reddit API credentials");
+    }
+    
+    const response = await fetch(`${PROXY_URL}/reddit/token`, {
       method: 'POST',
-      headers: getAuthHeaders(),
-      body: 'grant_type=client_credentials',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId, clientSecret }),
     });
 
     const data = await response.json();
@@ -32,29 +30,32 @@ const getAccessToken = async (): Promise<string> => {
     return data.access_token;
   } catch (error) {
     console.error('Error getting Reddit access token:', error);
-    throw error;
+    return handleCorsError(error);
   }
 };
 
-// Build search URL
-const buildSearchUrl = (params: RedditSearchParams): string => {
+// Build search URL parameters for the proxy
+const buildSearchParams = (params: RedditSearchParams): URLSearchParams => {
   const { query, subreddit, timeRange, limit = 100 } = params;
   
   // Convert timeRange to Reddit's format
   const timeFilter = timeRangeToRedditFormat(timeRange);
   
-  // Build the base URL
-  let url = `https://oauth.reddit.com/search.json?q=${encodeURIComponent(query)}`;
+  // Build search parameters
+  const searchParams = new URLSearchParams();
+  searchParams.append('q', query);
   
   // Add subreddit filter if provided
   if (subreddit) {
-    url += `+subreddit:${encodeURIComponent(subreddit)}`;
+    searchParams.append('subreddit', subreddit);
   }
   
   // Add time filter and other parameters
-  url += `&sort=relevance&t=${timeFilter}&limit=${limit}`;
+  searchParams.append('sort', 'relevance');
+  searchParams.append('t', timeFilter);
+  searchParams.append('limit', limit.toString());
   
-  return url;
+  return searchParams;
 };
 
 // Convert our time range to Reddit's format
@@ -73,28 +74,35 @@ const timeRangeToRedditFormat = (timeRange: string): string => {
   }
 };
 
-// Search for posts that mention the competitor
+// Search for posts that mention the competitor through our proxy
 export const searchReddit = async (params: RedditSearchParams): Promise<RedditSearchResponse> => {
   try {
     const accessToken = await getAccessToken();
-    const url = buildSearchUrl(params);
+    const searchParams = buildSearchParams(params);
+    
+    const url = `${PROXY_URL}/reddit/search?${searchParams.toString()}`;
     
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'X-Reddit-Access-Token': accessToken,
       },
     });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to search Reddit');
+    }
     
     const data = await response.json();
     return data;
   } catch (error) {
     console.error('Error searching Reddit:', error);
-    throw error;
+    return handleCorsError(error);
   }
 };
 
-// Extract posts with negative sentiment
+// Extract posts with negative sentiment - keep this unchanged
 export const extractNegativePosts = (response: RedditSearchResponse) => {
   // In a real app, we'd implement sentiment analysis here
   // For now, we'll just return all posts

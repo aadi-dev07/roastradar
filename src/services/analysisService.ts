@@ -6,6 +6,7 @@ import { analyzeRedditContent } from "./openRouterService";
 import { analyzeWithGemini } from "./geminiService";
 import { getModelById } from "./modelService";
 import { toast } from "@/hooks/use-toast";
+import { displayCorsErrorHelp } from "./corsProxyHelper";
 
 // Main function to analyze competitor pain points
 export const analyzeCompetitor = async (
@@ -64,9 +65,22 @@ export const analyzeCompetitor = async (
     
   } catch (error: any) {
     console.error("Error analyzing competitor:", error);
-    toast.error("Analysis failed", {
-      description: error.message || "Something went wrong",
-    });
+    
+    // Check if it might be a CORS error
+    if (error.message?.includes('Failed to fetch') || 
+        error.message?.includes('NetworkError') ||
+        error.message?.includes('Network request failed') ||
+        error.message?.includes('CORS')) {
+      displayCorsErrorHelp();
+      toast.error("API Connection Error", {
+        description: "Reddit API requires a proxy server. See console for details.",
+      });
+    } else {
+      toast.error("Analysis failed", {
+        description: error.message || "Something went wrong",
+      });
+    }
+    
     throw error;
   }
 };
