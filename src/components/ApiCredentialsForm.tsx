@@ -14,49 +14,49 @@ const ApiCredentialsForm: React.FC = () => {
   const [openRouterApiKey, setOpenRouterApiKey] = useState("");
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [isComplete, setIsComplete] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // Load stored credentials from user metadata if signed in, otherwise from localStorage
-    if (isSignedIn && user) {
-      // Get from user metadata
-      const metadata = user.unsafeMetadata as Record<string, string>;
-      setRedditClientId(metadata?.redditClientId || "");
-      setRedditClientSecret(metadata?.redditClientSecret || "");
-      setOpenRouterApiKey(metadata?.openRouterApiKey || "");
-      setGeminiApiKey(metadata?.geminiApiKey || "");
-    } else {
-      // Fall back to localStorage
-      const storedRedditClientId = localStorage.getItem("redditClientId") || "";
-      const storedRedditClientSecret = localStorage.getItem("redditClientSecret") || "";
-      const storedOpenRouterApiKey = localStorage.getItem("openRouterApiKey") || "";
-      const storedGeminiApiKey = localStorage.getItem("geminiApiKey") || "";
-      
-      setRedditClientId(storedRedditClientId);
-      setRedditClientSecret(storedRedditClientSecret);
-      setOpenRouterApiKey(storedOpenRouterApiKey);
-      setGeminiApiKey(storedGeminiApiKey);
-    }
+    const loadCredentials = async () => {
+      try {
+        if (isSignedIn && user) {
+          // Get from user metadata
+          const metadata = user.unsafeMetadata as Record<string, string> || {};
+          setRedditClientId(metadata.redditClientId || "");
+          setRedditClientSecret(metadata.redditClientSecret || "");
+          setOpenRouterApiKey(metadata.openRouterApiKey || "");
+          setGeminiApiKey(metadata.geminiApiKey || "");
+        } else {
+          // Fall back to localStorage
+          const storedRedditClientId = localStorage.getItem("redditClientId") || "";
+          const storedRedditClientSecret = localStorage.getItem("redditClientSecret") || "";
+          const storedOpenRouterApiKey = localStorage.getItem("openRouterApiKey") || "";
+          const storedGeminiApiKey = localStorage.getItem("geminiApiKey") || "";
+          
+          setRedditClientId(storedRedditClientId);
+          setRedditClientSecret(storedRedditClientSecret);
+          setOpenRouterApiKey(storedOpenRouterApiKey);
+          setGeminiApiKey(storedGeminiApiKey);
+        }
+      } catch (error) {
+        console.error("Error loading credentials:", error);
+      }
+    };
     
-    // Check if we have all credentials
-    setIsComplete(
-      (!!redditClientId && !!redditClientSecret) && 
-      (!!openRouterApiKey || !!geminiApiKey)
-    );
-  }, [isSignedIn, user, redditClientId, redditClientSecret, openRouterApiKey, geminiApiKey]);
+    loadCredentials();
+  }, [isSignedIn, user]);
+
+  // Check completion status whenever any credential changes
+  useEffect(() => {
+    const complete = (!!redditClientId && !!redditClientSecret) && 
+      (!!openRouterApiKey || !!geminiApiKey);
+    setIsComplete(complete);
+  }, [redditClientId, redditClientSecret, openRouterApiKey, geminiApiKey]);
 
   const handleSave = async () => {
     try {
-      if (isSignedIn && user) {
-        // Store credentials in user metadata
-        await user.update({
-          unsafeMetadata: {
-            redditClientId,
-            redditClientSecret,
-            openRouterApiKey,
-            geminiApiKey,
-          },
-        });
-      } 
+      setIsSaving(true);
       
       // Always store in localStorage as fallback
       localStorage.setItem("redditClientId", redditClientId);
@@ -64,10 +64,19 @@ const ApiCredentialsForm: React.FC = () => {
       localStorage.setItem("openRouterApiKey", openRouterApiKey);
       localStorage.setItem("geminiApiKey", geminiApiKey);
       
-      setIsComplete(
-        (!!redditClientId && !!redditClientSecret) && 
-        (!!openRouterApiKey || !!geminiApiKey)
-      );
+      if (isSignedIn && user) {
+        // Store credentials in user metadata
+        const currentMetadata = user.unsafeMetadata as Record<string, any> || {};
+        await user.update({
+          unsafeMetadata: {
+            ...currentMetadata,
+            redditClientId,
+            redditClientSecret,
+            openRouterApiKey,
+            geminiApiKey,
+          },
+        });
+      }
       
       toast.success("API credentials saved", {
         description: isSignedIn 
@@ -79,6 +88,8 @@ const ApiCredentialsForm: React.FC = () => {
       toast.error("Failed to save credentials", {
         description: "There was an error saving your credentials. Please try again."
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -143,9 +154,10 @@ const ApiCredentialsForm: React.FC = () => {
         <Button 
           onClick={handleSave} 
           className="w-full flex items-center gap-2"
+          disabled={isSaving}
         >
           <Save size={16} />
-          Save Credentials
+          {isSaving ? "Saving..." : "Save Credentials"}
         </Button>
         
         {isComplete && (

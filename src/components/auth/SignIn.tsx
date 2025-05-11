@@ -1,12 +1,14 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { SignIn as ClerkSignIn } from "@clerk/clerk-react";
 import Layout from "@/components/Layout";
+import { toast } from "@/hooks/use-toast";
 
 const SignIn = () => {
   const navigate = useNavigate();
-  const [signInComplete, setSignInComplete] = useState(false);
+  const [searchParams] = useSearchParams();
+  const redirectPath = searchParams.get("redirect") || "/";
 
   return (
     <Layout>
@@ -17,7 +19,7 @@ const SignIn = () => {
             routing="path"
             path="/sign-in"
             signUpUrl="/sign-up"
-            redirectUrl="/"
+            redirectUrl={redirectPath}
             appearance={{
               elements: {
                 formButtonPrimary: "bg-primary hover:bg-primary/90 text-white",
@@ -26,9 +28,13 @@ const SignIn = () => {
                 footerActionLink: "text-primary hover:text-primary/90"
               }
             }}
-            afterSignInUrl="/"
-            signInUrl="/sign-in"
+            afterSignInUrl={redirectPath}
           />
+        </div>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Need to access protected features? Sign in to continue.
+          </p>
         </div>
       </div>
     </Layout>

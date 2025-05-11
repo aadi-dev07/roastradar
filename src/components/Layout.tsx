@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useUser, useClerk, useAuth } from "@clerk/clerk-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,6 +12,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { isSignedIn, user } = useUser();
   const { signOut } = useClerk();
   const { isLoaded } = useAuth();
+  const navigate = useNavigate();
+  
+  const handleSignOut = () => {
+    signOut(() => {
+      navigate("/");
+    });
+  };
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,7 +41,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Link>
               </li>
               <li>
-                <Link to="/scan" className="text-foreground/80 hover:text-foreground transition-colors">
+                <Link to={isSignedIn ? "/scan" : "/sign-in"} className="text-foreground/80 hover:text-foreground transition-colors">
                   New Scan
                 </Link>
               </li>
@@ -62,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             Profile
                           </Link>
                           <button 
-                            onClick={() => signOut()}
+                            onClick={handleSignOut}
                             className="w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors text-destructive"
                           >
                             Sign out
@@ -106,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className="flex-1 px-3 py-2 rounded-md border" 
                 />
                 <Link 
-                  to="/scan" 
+                  to={isSignedIn ? "/scan" : "/sign-in"}
                   className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-md transition-colors"
                 >
                   Go

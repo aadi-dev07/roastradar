@@ -32,7 +32,11 @@ const App = () => {
               <UserProfile />
             </ProtectedRoute>
           } />
-          <Route path="/scan" element={<ScanPage />} />
+          <Route path="/scan" element={
+            <ProtectedRoute>
+              <ScanPage />
+            </ProtectedRoute>
+          } />
           <Route path="/insights" element={<InsightsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
