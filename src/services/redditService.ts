@@ -1,8 +1,9 @@
+
 import { RedditSearchParams, RedditSearchResponse } from "@/types/reddit";
 import { handleCorsError } from "./corsProxyHelper";
 
 // Proxy server URL - replace this with your deployed Cloudflare Worker URL
-const PROXY_URL = "https://your-worker-url.workers.dev";
+const PROXY_URL = "https://roastradar.devuse94.workers.dev";
 
 // Get access token via proxy
 const getAccessToken = async (): Promise<string> => {
